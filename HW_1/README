@@ -1,0 +1,684 @@
+==========================================================================================
+
+         Introduction to Natural Laguage Processing Assignment 1
+ 
+==========================================================================================
+
+Name: Rohit Bhal
+Solar ID: 112073893
+NetID email address: rbhal@cs.stonybrook.edu / rohit.bhal@.stonybrook.edu
+
+
+System:
+Chromebook
+Distributor ID:	Ubuntu
+Description:	GalliumOS 2.1
+Release:	16.04
+Codename:	xenial
+Python 2.7.12
+Python 2.7.12 (default, Dec  4 2017, 14:50:18) 
+[GCC 5.4.0 20160609] on linux2
+
+tensorboard==1.10.0
+tensorflow==1.5.0
+tensorflow-tensorboard==1.5.1
+numpy==1.14.5
+scikit-image==0.14.0
+scikit-learn==0.19.2
+scipy==1.1.0
+
+
+IMPLEMENTATION:
+
+1. In this assignment, you will be asked to:
+
+  - generate batch for skip-gram model (word2vec_basic.py)
+  - implement two loss functions to train word embeddings (loss_func.py)
+  - tune the parameters for word embeddings 
+  - apply learned word embeddings to word analogy task (word_analogy.py)
+
+
+2. Generate Batch Data
+ For Generating Batch Data, i am following steps:
+ 1. Get length of Data (N)
+ 2. Make variable span  # [ skip_window target skip_window ]
+ 3. Checking if the data_index + span > N if it is make it zero
+ 4. Batch_One is the variable holding the current data of the window + target
+ 5.Loop Count = Batch_Size/num_skips . repeat = num_skips
+ 6. For first loop, add span data to the queue of Batch_One. Data_index is the last index of the current window
+ 7.Now, Second loop is num_skips times as for each target(center) word, i have to add num_skips context word to the batch.
+ 8.Target = skip_window. For each num_skips, add random context to the labels which is not target word. Also add the current target word for that specific context
+ to the batch
+ 9.After the num_skips loop is over, shift the data in batch_one by one and repeat the process upto loop_count times.
+ 10.Return the Batch & Label 
+
+
+ 3. Loss Function :
+
+ Cross Entropy:
+
+  inputs: The embeddings for context words. Dimension is [batch_size, embedding_size].
+    true_w: The embeddings for predicting words. Dimension of true_w is [batch_size, embedding_size].
+
+    Write the code that calculate A = log(exp({u_o}^T v_c))
+
+    A =
+
+
+    And write the code that calculate B = log(\sum{exp({u_w}^T v_c)})
+
+
+    B =
+
+    vc = inputs is equal to vc or the target word
+    uo = true_w is the context words surrounding the target word.
+    Multipliying uo.T * vc results in the summation of all the vocab. Therefore, we need only the diagonal part of the resultant array.
+    Also log and exp cancels out each other in the above formula.
+    Resulting : A
+    B is sum over all the vocabulary. For us, the vocabulary is the uo or the batch size. Therefore, we can directly multiply them and get the resultant 
+    sum across column.
+
+
+
+    NCE Loss:
+
+    log Pr(D = 1, wo |wc ) + /sum log(1 − Pr(D = 1, wx |wc ))
+
+
+    log (1 - 1/(1+ exp(-x)) ) = log (exp(-x)/(1+ exp(-x)) )
+                                = log (1/(1+ exp(x)) )
+
+    log(1 − Pr(D = 1, wx |wc ) can be simplified to - log(1 + exp(x))
+
+
+    First Term = s(wo , wc ) − log [k*Pr(wo )]
+    Second Term = s(wx , wc ) − log [k* Pr(wx )]
+    s(wo , wc ) = (vc.T uo ) + bo
+
+    wo = uo
+    wc = vc
+    wx = vk
+
+    Now,
+    tf.gather(weights, sample) gives me the negative samples vk
+    tf.gather(weights, labels) gives me the positive samples uo
+    vc is the inputs variable in the function
+
+    Get tf.gather(biases,labels) # uo bias (positive bias)
+    Get tf.gather(biases,sample) # vk bias (negative bias)
+
+    uo_p = tf.gather(unigram_prob_tensor,labels) # uo unigram probability
+    vk_p = tf.gather(unigram_prob_tensor,sample) # vk unigram probability
+
+    After getting all these variables we can calculate the first and second term using the above formula.
+    Casting to float64 is done to avoid any Nan problem or getting zero in first or second term.
+
+
+
+
+
+Word Analogy :
+
+1.Extract the line from the input file.
+2. Split the line using delimiter till i get the left examples and right choices.
+3. Computer the avg of the difference of pairs on the left side.
+4. For each pair on the right side, compute the cosine score against the avg on left side.
+5. Give the minimum and maximum cosine score index and attach the word to the outpout file.
+
+
+Similar Word/Analogy :
+
+1.Get Cosine Score for each word in dictionary against {"first", "america","would"}
+2. Add each score to their respective list.
+3. Sort the list and get the last 20 elements and save them in the file.
+
+
+
+Word Analogy Prediction file using best NCE & Cross Entropy Model:
+
+1. nce_loss_model_analogy_prediction.txt 
+2. cross_entropy_analogy_prediction.txt
+
+
+
+=====================================================================================================================
+
+Experimentation:
+
+Note: Unless, specified default configuartion is being used to train the model.
+
+NCE Loss:
+
+
+1.
+
+batch_size = 128
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 4      # How many words to consider left and right.
+num_skips = 8      # How many times to reuse an input to generate a label.
+
+Rest Default Values
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        nce_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   327
+Number of Least Illustrative Guessed Incorrectly: 587
+Accuracy of Least Illustrative Guesses:            35.8%
+Number of Most Illustrative Guessed Correctly:    305
+Number of Most Illustrative Guessed Incorrectly:  609
+Accuracy of Most Illustrative Guesses:             33.4%
+Overall Accuracy:                                  34.6%
+
+Average loss at step  190000 :  1.4969691256400541
+Average loss at step  195000 :  1.48353931690964
+Average loss at step  200000 :  1.5033708277868485
+
+
+2.
+
+# Hyper Parameters to config
+batch_size = 128
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 2      # How many words to consider left and right.
+num_skips = 4      # How many times to reuse an input to generate a label.
+
+Rest Default Values
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        nce_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   320
+Number of Least Illustrative Guessed Incorrectly: 594
+Accuracy of Least Illustrative Guesses:            35.0%
+Number of Most Illustrative Guessed Correctly:    308
+Number of Most Illustrative Guessed Incorrectly:  606
+Accuracy of Most Illustrative Guesses:             33.7%
+Overall Accuracy:                                  34.4%
+
+
+
+Average loss at step  190000 :  1.4375250200836394
+Average loss at step  195000 :  1.4707694657963666
+Average loss at step  200000 :  1.4537452065239598
+
+
+3.
+
+# Hyper Parameters to config
+batch_size = 128
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 8      # How many words to consider left and right.
+num_skips = 16      # How many times to reuse an input to generate a label.
+
+
+
+Average loss at step  190000 :  1.4528451139597907
+Average loss at step  195000 :  1.313165096903987
+Average loss at step  200000 :  1.3783387459615477
+
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        nce_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   320
+Number of Least Illustrative Guessed Incorrectly: 594
+Accuracy of Least Illustrative Guesses:            35.0%
+Number of Most Illustrative Guessed Correctly:    300
+Number of Most Illustrative Guessed Incorrectly:  614
+Accuracy of Most Illustrative Guesses:             32.8%
+Overall Accuracy:                                  33.9%
+
+
+
+4.
+
+# Hyper Parameters to config
+batch_size = 256
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 2      # How many words to consider left and right.
+num_skips = 4      # How many times to reuse an input to generate a label.
+
+
+Average loss at step  190000 :  1.35274172593862
+Average loss at step  195000 :  1.3713207227539712
+Average loss at step  200000 :  1.50916780224667
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        nce_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   315
+Number of Least Illustrative Guessed Incorrectly: 599
+Accuracy of Least Illustrative Guesses:            34.5%
+Number of Most Illustrative Guessed Correctly:    305
+Number of Most Illustrative Guessed Incorrectly:  609
+Accuracy of Most Illustrative Guesses:             33.4%
+Overall Accuracy:                                  33.9%
+
+
+5.
+
+# Hyper Parameters to config
+batch_size = 64
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 1      # How many words to consider left and right.
+num_skips = 2      # How many times to reuse an input to generate a label.
+
+Average loss at step  190000 :  1.2821615836883298
+Average loss at step  195000 :  1.2763577798044636
+Average loss at step  200000 :  1.279767415623586
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        nce_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   314
+Number of Least Illustrative Guessed Incorrectly: 600
+Accuracy of Least Illustrative Guesses:            34.4%
+Number of Most Illustrative Guessed Correctly:    315
+Number of Most Illustrative Guessed Incorrectly:  599
+Accuracy of Most Illustrative Guesses:             34.5%
+Overall Accuracy:                                  34.4%
+
+
+6.
+
+# Hyper Parameters to config
+batch_size = 64
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 2      # How many words to consider left and right.
+num_skips = 4      # How many times to reuse an input to generate a label.
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        nce_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   325
+Number of Least Illustrative Guessed Incorrectly: 589
+Accuracy of Least Illustrative Guesses:            35.6%
+Number of Most Illustrative Guessed Correctly:    312
+Number of Most Illustrative Guessed Incorrectly:  602
+Accuracy of Most Illustrative Guesses:             34.1%
+Overall Accuracy:                                  34.8%
+
+
+Average loss at step  190000 :  1.2210243791597086
+Average loss at step  195000 :  1.248858781131281
+Average loss at step  200000 :  1.26403406615339
+
+
+7.
+
+ # maximum training step
+max_num_steps  = 800001
+checkpoint_step = 50000
+
+# Hyper Parameters to config
+batch_size = 64
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 2      # How many words to consider left and right.
+num_skips = 4      # How many times to reuse an input to generate a label.
+
+Average loss at step  790000 :  1.316453943732156
+Average loss at step  795000 :  1.3716023346420214
+Average loss at step  800000 :  1.4631933213499595
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        nce_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   329
+Number of Least Illustrative Guessed Incorrectly: 585
+Accuracy of Least Illustrative Guesses:            36.0%
+Number of Most Illustrative Guessed Correctly:    300
+Number of Most Illustrative Guessed Incorrectly:  614
+Accuracy of Most Illustrative Guesses:             32.8%
+Overall Accuracy:                                  34.4%
+
+
+8.
+
+# maximum training step
+max_num_steps  = 400001
+checkpoint_step = 50000
+
+# Hyper Parameters to config
+batch_size = 64
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 2      # How many words to consider left and right.
+num_skips = 4      # How many times to reuse an input to generate a label.
+
+
+Average loss at step  390000 :  1.239640908798319
+Average loss at step  395000 :  1.214958991175164
+Average loss at step  400000 :  1.2442161393751876
+
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        nce_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   321
+Number of Least Illustrative Guessed Incorrectly: 593
+Accuracy of Least Illustrative Guesses:            35.1%
+Number of Most Illustrative Guessed Correctly:    309
+Number of Most Illustrative Guessed Incorrectly:  605
+Accuracy of Most Illustrative Guesses:             33.8%
+Overall Accuracy:                                  34.5%
+
+
+
+
+=========================================================================================================================================
+
+Cross Entropy Loss :
+
+
+
+
+1.
+
+# Hyper Parameters to config
+batch_size = 128
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 4      # How many words to consider left and right.
+num_skips = 8      # How many times to reuse an input to generate a label.
+
+
+Average loss at step  190000 :  4.825463654518128
+Average loss at step  195000 :  4.823719399738311
+Average loss at step  200000 :  4.824304129600525
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        cross_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   318
+Number of Least Illustrative Guessed Incorrectly: 596
+Accuracy of Least Illustrative Guesses:            34.8%
+Number of Most Illustrative Guessed Correctly:    292
+Number of Most Illustrative Guessed Incorrectly:  622
+Accuracy of Most Illustrative Guesses:             31.9%
+Overall Accuracy:                                  33.4%
+
+
+2.
+
+# Hyper Parameters to config
+batch_size = 128
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 2      # How many words to consider left and right.
+num_skips = 4      # How many times to reuse an input to generate a label.
+
+
+Average loss at step  190000 :  4.705398851013183
+Average loss at step  195000 :  4.701080867195129
+Average loss at step  200000 :  4.70401112203598
+
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        cross_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   322
+Number of Least Illustrative Guessed Incorrectly: 592
+Accuracy of Least Illustrative Guesses:            35.2%
+Number of Most Illustrative Guessed Correctly:    292
+Number of Most Illustrative Guessed Incorrectly:  622
+Accuracy of Most Illustrative Guesses:             31.9%
+Overall Accuracy:                                  33.6%
+
+
+
+3.
+
+ # Hyper Parameters to config
+batch_size = 128
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 8      # How many words to consider left and right.
+num_skips = 16      # How many times to reuse an input to generate a label.
+
+
+Average loss at step  190000 :  4.834389723873138
+Average loss at step  195000 :  4.835639459419251
+Average loss at step  200000 :  4.835974419879913
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        cross_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   325
+Number of Least Illustrative Guessed Incorrectly: 589
+Accuracy of Least Illustrative Guesses:            35.6%
+Number of Most Illustrative Guessed Correctly:    298
+Number of Most Illustrative Guessed Incorrectly:  616
+Accuracy of Most Illustrative Guesses:             32.6%
+Overall Accuracy:                                  34.1%
+
+
+
+4.
+
+# maximum training step
+max_num_steps  = 800001
+checkpoint_step = 50000
+
+# Hyper Parameters to config
+batch_size = 64
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 2      # How many words to consider left and right.
+num_skips = 4      # How many times to reuse an input to generate a label.
+
+Average loss at step  790000 :  4.02649654417038
+Average loss at step  795000 :  4.007401915502548
+Average loss at step  800000 :  3.926882362318039
+
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        cross_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   328
+Number of Least Illustrative Guessed Incorrectly: 586
+Accuracy of Least Illustrative Guesses:            35.9%
+Number of Most Illustrative Guessed Correctly:    284
+Number of Most Illustrative Guessed Incorrectly:  630
+Accuracy of Most Illustrative Guesses:             31.1%
+Overall Accuracy:                                  33.5%
+
+
+
+5.
+
+
+# Hyper Parameters to config
+batch_size = 64
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 8      # How many words to consider left and right.
+num_skips = 16      # How many times to reuse an input to generate a label.
+
+# maximum training step
+max_num_steps  = 400001
+checkpoint_step = 50000
+
+
+Average loss at step  390000 :  4.144181952571869
+Average loss at step  395000 :  4.143630964183807
+Average loss at step  400000 :  4.144266467761994
+
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        cross_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   322
+Number of Least Illustrative Guessed Incorrectly: 592
+Accuracy of Least Illustrative Guesses:            35.2%
+Number of Most Illustrative Guessed Correctly:    287
+Number of Most Illustrative Guessed Incorrectly:  627
+Accuracy of Most Illustrative Guesses:             31.4%
+Overall Accuracy:                                  33.3%
+
+
+6.
+# Hyper Parameters to config
+batch_size = 256
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 8      # How many words to consider left and right.
+num_skips = 16      # How many times to reuse an input to generate a label.
+
+
+Average loss at step  190000 :  5.535476498317719
+Average loss at step  195000 :  5.533843103694916
+Average loss at step  200000 :  5.534155613517761
+
+
+
+Generated by:                                     score_maxdiff.pl
+Mechanical Turk File:                             word_analogy_dev_mturk_answers.txt
+Test File:                                        cross_output.txt
+Number of MaxDiff Questions:                      914
+Number of Least Illustrative Guessed Correctly:   321
+Number of Least Illustrative Guessed Incorrectly: 593
+Accuracy of Least Illustrative Guesses:            35.1%
+Number of Most Illustrative Guessed Correctly:    294
+Number of Most Illustrative Guessed Incorrectly:  620
+Accuracy of Most Illustrative Guesses:             32.2%
+Overall Accuracy:                                  33.6%
+
+
+
+
+Libraries Installed :
+
+absl-py==0.5.0
+args==0.1.0
+astor==0.7.1
+astroid==1.6.5
+backports-abc==0.5
+backports.functools-lru-cache==1.5
+backports.shutil-get-terminal-size==1.0.0
+backports.weakref==1.0.post1
+bleach==1.5.0
+certifi==2018.8.24
+chardet==3.0.4
+click==6.7
+clint==0.5.1
+cloudpickle==0.5.6
+configparser==3.5.0
+contextlib2==0.5.5
+cycler==0.10.0
+dask==0.19.2
+decorator==4.3.0
+defusedxml==0.5.0
+entrypoints==0.2.3
+enum34==1.1.6
+ez-setup==0.9
+floyd-cli==0.11.8
+funcsigs==1.0.2
+functools32==3.2.3.post2
+futures==3.2.0
+gast==0.2.0
+grpcio==1.15.0
+h5py==2.8.0
+html5lib==0.9999999
+idna==2.7
+ipaddress==1.0.22
+ipykernel==4.10.0
+ipython==5.8.0
+ipython-genutils==0.2.0
+ipywidgets==7.4.2
+isort==4.3.4
+Jinja2==2.10
+jsonschema==2.6.0
+jupyter==1.0.0
+jupyter-client==5.2.3
+jupyter-console==5.2.0
+jupyter-core==4.4.0
+Keras==2.2.2
+Keras-Applications==1.0.4
+Keras-Preprocessing==1.0.2
+kiwisolver==1.0.1
+lazy-object-proxy==1.3.1
+Markdown==2.6.11
+MarkupSafe==1.0
+marshmallow==2.15.5
+matplotlib==2.2.3
+mccabe==0.6.1
+mistune==0.8.3
+mock==2.0.0
+mpmath==1.0.0
+nbconvert==5.4.0
+nbformat==4.4.0
+networkx==2.2
+notebook==5.7.0
+numpy==1.14.5
+pandas==0.23.4
+pandocfilters==1.4.2
+pathlib2==2.3.2
+pbr==4.2.0
+pexpect==4.6.0
+pickleshare==0.7.4
+Pillow==5.2.0
+plotly==3.2.1
+prometheus-client==0.3.1
+prompt-toolkit==1.0.15
+protobuf==3.6.1
+ptyprocess==0.6.0
+pycrypto==2.6.1
+Pygments==2.2.0
+pylint==1.9.3
+pyparsing==2.2.1
+python-dateutil==2.7.3
+pytz==2018.5
+PyWavelets==1.0.1
+PyYAML==3.13
+pyzmq==17.1.2
+qtconsole==4.4.1
+raven==6.9.0
+requests==2.19.1
+requests-toolbelt==0.8.0
+retrying==1.3.3
+scandir==1.9.0
+scikit-image==0.14.0
+scikit-learn==0.19.2
+scipy==1.1.0
+Send2Trash==1.5.0
+simplegeneric==0.8.1
+singledispatch==3.4.0.3
+six==1.11.0
+sklearn==0.0
+subprocess32==3.5.2
+sympy==1.3
+tabulate==0.8.2
+tensorboard==1.10.0
+tensorflow==1.5.0
+tensorflow-tensorboard==1.5.1
+termcolor==1.1.0
+terminado==0.8.1
+testpath==0.3.1
+Theano==1.0.2
+toolz==0.9.0
+tornado==5.1.1
+traitlets==4.3.2
+urllib3==1.23
+wcwidth==0.1.7
+Werkzeug==0.14.1
+widgetsnbextension==3.4.2
+wrapt==1.10.11
